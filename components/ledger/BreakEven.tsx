@@ -1,0 +1,9 @@
+'use client';
+import { inr } from '@/lib/format/inr';
+import type { BreakEvenResult } from '@/lib/tax/breakEven';
+
+export function BreakEven({ result, amount, onAmount }: { result: BreakEvenResult; amount: number; onAmount: (value: number) => void }) {
+  if (!result.breakEvenExists) return <section className="card"><h2>Break-even deductions</h2><p>At your income, the new regime wins no matter how much you invest in deductions. Section 80C paperwork will not reduce your tax this year.</p><p className="muted">Maximum old-regime tax reduction in the model: {inr(result.maxOldRegimeSaving)}.</p></section>;
+  const max = Math.max(result.realisticCeiling, result.breakEvenDeductions, 100); const marker = Math.min(100, result.breakEvenDeductions / max * 100);
+  return <section className="card"><h2>Break-even deductions</h2><p>The old regime first matches the new regime at <strong className="figure">{inr(result.breakEvenDeductions)}</strong>. Your currently allowed old-regime deductions are {inr(result.currentDeductions)}.</p><div className="range-line"><input aria-label="Explore old-regime deductions" type="range" min="0" max={max} step="100" value={Math.min(max, amount)} onChange={(event) => onAmount(Number(event.target.value))} style={{ accentColor: 'var(--green)' }} /><label>Explore a deduction amount<input className="figure" inputMode="numeric" value={amount} onChange={(event) => onAmount(Math.max(0, Number(event.target.value.replace(/\D/g, '')) || 0))} /></label></div><p className="muted">Break-even marker: {marker.toFixed(0)}% of this axis. {result.gap <= 0 ? `You are past it by ${inr(-result.gap)}.` : `You are ${inr(result.gap)} short.`}</p>{result.exceedsRealisticCeiling && <p className="notice">The break-even point exceeds the realistic ceiling of {inr(result.realisticCeiling)} based on the information entered.</p>}</section>;
+}

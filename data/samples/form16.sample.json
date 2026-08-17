@@ -1,0 +1,8 @@
+{
+  "documentType": "FORM16", "assessmentYear": "2026-27", "pan": "ABCDE1234F",
+  "employer": { "name": "Acme Systems Pvt Ltd", "tan": "BLRA12345B" },
+  "salary": { "gross": 1450000, "basic": 700000, "da": 0, "hraReceived": 280000, "exemptAllowances": 52000, "employerNpsContribution": 98000 },
+  "deductionsConsidered": { "80C": 150000, "80D": 25000, "80CCD1B": 50000 },
+  "tdsQuarterly": [{ "quarter": "Q1", "amount": 22000, "depositedOn": "2025-07-07" }, { "quarter": "Q2", "amount": 22000, "depositedOn": "2025-10-07" }, { "quarter": "Q3", "amount": 22000, "depositedOn": "2026-01-07" }, { "quarter": "Q4", "amount": 24000, "depositedOn": "2026-04-30" }],
+  "totalTds": 90000
+}

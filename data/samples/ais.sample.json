@@ -1,0 +1,12 @@
+{
+  "documentType": "AIS", "assessmentYear": "2026-27", "pan": "ABCDE1234F",
+  "entries": [
+    { "id": "A1", "category": "SALARY", "source": "Acme Systems Pvt Ltd", "sourceTan": "BLRA12345B", "amount": 1450000, "tdsCredited": 88000 },
+    { "id": "A2", "category": "SAVINGS_INTEREST", "source": "HDFC Bank", "amount": 14200, "tdsCredited": 0 },
+    { "id": "A3", "category": "FD_INTEREST", "source": "HDFC Bank", "amount": 68000, "tdsCredited": 6800 },
+    { "id": "A4", "category": "DIVIDEND", "source": "Infosys Ltd", "amount": 9400, "tdsCredited": 940 },
+    { "id": "A5", "category": "SECURITIES_SALE", "source": "Zerodha Broking", "amount": 340000, "tdsCredited": 0 },
+    { "id": "A6", "category": "FD_INTEREST", "source": "HDFC Bank", "amount": 68000, "tdsCredited": 6800, "note": "possible duplicate of A3" },
+    { "id": "A7", "category": "RENT_RECEIVED", "source": "Tenant PAN XXXXX1234X", "amount": 216000, "tdsCredited": 0 }
+  ]
+}

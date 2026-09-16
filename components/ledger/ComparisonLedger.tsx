@@ -3,7 +3,37 @@ import { useState } from 'react';
 import { inr } from '@/lib/format/inr';
 import type { Comparison } from '@/lib/tax/types';
 
-export function ComparisonLedger({ comparison }: { comparison: Comparison }) {
-  const [open, setOpen] = useState<number | null>(null); const winnerColumn = comparison.winner === 'tie' ? null : comparison.winner;
-  return <section aria-labelledby="ledger-title"><h2 id="ledger-title">Regime comparison</h2><p className="muted">Select a row to see its working. Every value is computed locally from the figures entered.</p><table className="ledger"><thead><tr><th>Working</th><th className={winnerColumn === 'old' ? 'winner' : ''}>Old regime {winnerColumn === 'old' && <small> — LOWER BY {inr(comparison.difference)}</small>}</th><th className={winnerColumn === 'new' ? 'winner' : ''}>New regime {winnerColumn === 'new' && <small> — LOWER BY {inr(comparison.difference)}</small>}</th></tr></thead><tbody>{comparison.old.steps.map((oldStep, index) => { const newStep = comparison.new.steps[index]; const expanded = open === index; return <tr key={oldStep.number}><td data-label="Working"><button className="row-button" onClick={() => setOpen(expanded ? null : index)} aria-expanded={expanded}><strong>{oldStep.number}. {oldStep.label}</strong> {oldStep.section && <span className="eyebrow">{oldStep.section}</span>}</button>{expanded && <div className="working">Old: {oldStep.working}<br />New: {newStep.working}</div>}</td><td data-label="Old regime" className={`number ${winnerColumn === 'old' ? 'winner' : ''}`}>{inr(oldStep.value)}</td><td data-label="New regime" className={`number ${winnerColumn === 'new' ? 'winner' : ''}`}>{newStep.disallowed && oldStep.value !== 0 ? <><span className="strike">{inr(oldStep.value)}</span><small className="muted"> not allowed in new regime</small></> : inr(newStep.value)}</td></tr>; })}</tbody></table>{comparison.winner === 'tie' && <p className="notice">Both regimes compute the same. The new regime is the default and needs no paperwork.</p>}<div className="sticky"><span className="figure">Old {inr(comparison.old.totalTax)}</span> · <span className="figure">New {inr(comparison.new.totalTax)}</span> · {comparison.winner === 'tie' ? 'Same computed tax' : `${comparison.winner === 'old' ? 'Old' : 'New'} computes lower by ${inr(comparison.difference)}`}</div></section>;
+// Headline rows stay visible even when zero, so the ledger always reads top to bottom.
+const alwaysShown = new Set([1, 7, 9, 17, 18]);
+
+export function ComparisonLedger({ comparison, title = 'Line-by-line working' }: { comparison: Comparison; title?: string }) {
+  const [open, setOpen] = useState<number | null>(null);
+  const [showAll, setShowAll] = useState(false);
+  const winnerColumn = comparison.winner === 'tie' ? null : comparison.winner;
+  const rows = comparison.old.steps.map((oldStep, index) => ({ oldStep, newStep: comparison.new.steps[index], index }));
+  const visible = showAll ? rows : rows.filter(({ oldStep, newStep }) => alwaysShown.has(oldStep.number) || oldStep.value !== 0 || newStep.value !== 0);
+  const hidden = rows.length - visible.length;
+
+  return <section aria-labelledby="ledger-title" className="section">
+    <div className="actions" style={{ justifyContent: 'space-between', marginBottom: 10 }}>
+      <div><h2 id="ledger-title" style={{ marginBottom: 2 }}>{title}</h2><p className="muted small" style={{ margin: 0 }}>Select a row to see how it was computed.</p></div>
+      {(hidden > 0 || showAll) && <button className="button ghost" onClick={() => setShowAll(!showAll)}>{showAll ? 'Hide zero rows' : `Show all ${rows.length} steps`}</button>}
+    </div>
+    <div className="table-wrap">
+      <table className="ledger">
+        <thead><tr><th>Step</th><th className={`number ${winnerColumn === 'old' ? 'winner' : ''}`}>Old regime</th><th className={`number ${winnerColumn === 'new' ? 'winner' : ''}`}>New regime</th></tr></thead>
+        <tbody>{visible.map(({ oldStep, newStep, index }) => {
+          const expanded = open === index;
+          return <tr key={oldStep.number} className={oldStep.number === 17 ? 'total' : undefined}>
+            <td>
+              <button className="row-button" onClick={() => setOpen(expanded ? null : index)} aria-expanded={expanded}><span className="chev" aria-hidden="true">▶</span><span>{oldStep.label} {oldStep.section && <span className="section-tag">{oldStep.section}</span>}</span></button>
+              {expanded && <div className="working fade-in"><span><strong>Old:</strong> {oldStep.working}</span><span><strong>New:</strong> {newStep.working}</span></div>}
+            </td>
+            <td className={`number ${winnerColumn === 'old' ? 'winner' : ''}`}>{inr(oldStep.value)}</td>
+            <td className={`number ${winnerColumn === 'new' ? 'winner' : ''}`}>{newStep.disallowed && oldStep.value !== 0 ? <><span className="strike">{inr(oldStep.value)}</span><br /><small className="muted">not allowed</small></> : inr(newStep.value)}</td>
+          </tr>;
+        })}</tbody>
+      </table>
+    </div>
+  </section>;
 }

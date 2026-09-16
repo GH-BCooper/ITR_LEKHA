@@ -1,8 +1,8 @@
 import { rules } from '@/lib/tax/rules';
 import type { AisEntry, Flag, ReconciliationInput } from '../types';
 
-export function flag(code: Flag['code'], severity: Flag['severity'], title: string, whatItMeans: string, ifIgnored: string, suggestedAction: string, evidence: Flag['evidence'], confidence: Flag['confidence']): Flag {
-  return { id: `${code}-${evidence.aisEntryIds?.join('-') ?? 'document'}`, code, severity, title, whatItMeans, ifIgnored, suggestedAction, evidence, confidence };
+export function flag(code: Flag['code'], severity: Flag['severity'], title: string, whatItMeans: string, ifIgnored: string, suggestedAction: string, evidence: Flag['evidence'], confidence: Flag['confidence'], idSuffix?: string): Flag {
+  return { id: `${code}-${idSuffix ?? evidence.aisEntryIds?.join('-') ?? 'document'}`, code, severity, title, whatItMeans, ifIgnored, suggestedAction, evidence, confidence };
 }
 export const tdsTolerance = () => rules.tolerances.tds;
 export const salaryTolerance = () => rules.tolerances.salary;

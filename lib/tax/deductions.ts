@@ -9,7 +9,9 @@ export function deductionLines(input: TaxInput, regime: Regime, grossTotalIncome
   const age = ageOnFinancialYear(input); const d = input.deductions;
   const self80D = capped(d.section80Dself, d.selfOrSpouseSenior ? rules.caps['80DSenior'] : rules.caps['80DNormal']);
   const parent80D = capped(d.section80Dparents, d.parentSenior ? rules.caps['80DSenior'] : rules.caps['80DNormal']);
-  const nps2Cap = (input.salary.basic + input.salary.da) * rules.rates.employerNpsRate;
+  // 80CCD(2) allows 14% of basic + DA in the new regime but only 10% in the old regime (non-government employers).
+  const npsRate = regime === 'new' ? rules.rates.employerNpsRate : rules.rates.employerNpsRateOld;
+  const nps2Cap = (input.salary.basic + input.salary.da) * npsRate;
   const nps2 = capped(input.salary.employerNpsContribution, nps2Cap);
   const tta = age < 60 ? capped(input.otherIncome.savingsInterest, rules.caps['80TTA']) : 0;
   const ttb = age >= 60 ? capped(input.otherIncome.savingsInterest + input.otherIncome.depositInterest, rules.caps['80TTB']) : 0;
@@ -24,7 +26,7 @@ export function deductionLines(input: TaxInput, regime: Regime, grossTotalIncome
     { key: 'hra', label: 'HRA exemption', entered: hra, allowed: oldOnly ? hra : 0, oldAllowed: true, newAllowed: false, note: hraExemption(input).working },
     { key: '80C', label: '80C', entered: d.section80C, allowed: oldOnly ? capped(d.section80C, rules.caps['80C']) : 0, oldAllowed: true, newAllowed: false, note: d.section80C > rules.caps['80C'] ? `Allowed up to ₹${rules.caps['80C']}; excess has no tax effect.` : undefined },
     { key: '80CCD1B', label: '80CCD(1B)', entered: d.section80CCD1B, allowed: oldOnly ? capped(d.section80CCD1B, rules.caps['80CCD1B']) : 0, oldAllowed: true, newAllowed: false },
-    { key: '80CCD2', label: "80CCD(2), employer NPS", entered: input.salary.employerNpsContribution, allowed: nps2, oldAllowed: true, newAllowed: true, note: input.salary.employerNpsContribution > nps2 ? `Allowed up to 14% of basic + DA (₹${nps2}). Excess is taxable.` : undefined },
+    { key: '80CCD2', label: "80CCD(2), employer NPS", entered: input.salary.employerNpsContribution, allowed: nps2, oldAllowed: true, newAllowed: true, note: input.salary.employerNpsContribution > nps2 ? `Allowed up to ${npsRate * 100}% of basic + DA (₹${nps2}). Excess is taxable.` : undefined },
     { key: '80Dself', label: '80D, self/family', entered: d.section80Dself, allowed: oldOnly ? self80D : 0, oldAllowed: true, newAllowed: false },
     { key: '80Dparents', label: '80D, parents', entered: d.section80Dparents, allowed: oldOnly ? parent80D : 0, oldAllowed: true, newAllowed: false },
     { key: '80TTA', label: '80TTA savings interest', entered: input.otherIncome.savingsInterest, allowed: oldOnly ? tta : 0, oldAllowed: true, newAllowed: false, note: age >= 60 ? '80TTB applies instead for senior citizens.' : undefined },
@@ -37,7 +39,8 @@ export function deductionLines(input: TaxInput, regime: Regime, grossTotalIncome
     { key: '80GG', label: '80GG rent paid', entered: d.section80GG, allowed: oldOnly ? gg : 0, oldAllowed: true, newAllowed: false, note: input.salary.hraReceived > 0 ? 'Not available when HRA is received.' : undefined },
     { key: 'professionalTax', label: 'Professional tax', entered: d.professionalTax, allowed: oldOnly ? capped(d.professionalTax, rules.caps.professionalTax) : 0, oldAllowed: true, newAllowed: false },
     { key: '80CCH', label: '80CCH Agniveer contribution', entered: d.section80CCH, allowed: newOnly ? Math.max(0, d.section80CCH) : 0, oldAllowed: false, newAllowed: true },
-    { key: 'familyPension', label: 'Family pension deduction', entered: input.otherIncome.familyPension, allowed: newOnly ? Math.min(rules.caps.familyPension, input.otherIncome.familyPension * rules.rates.familyPensionRatio) : 0, oldAllowed: false, newAllowed: true }
+    // Section 57(iia): one-third of family pension, capped at ₹15,000 (old) or ₹25,000 (new).
+    { key: 'familyPension', label: 'Family pension deduction', entered: input.otherIncome.familyPension, allowed: Math.round(Math.min(newOnly ? rules.caps.familyPension : rules.caps.familyPensionOld, Math.max(0, input.otherIncome.familyPension) * rules.rates.familyPensionRatio)), oldAllowed: true, newAllowed: true }
   ];
   return lines;
 }

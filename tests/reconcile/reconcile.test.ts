@@ -21,6 +21,8 @@ describe('reconciliation detectors', () => {
     expect(result.flags.some((item) => item.code === 'SECURITIES_SALE_NO_CG_DECLARED')).toBe(true);
     expect(result.flags.some((item) => item.code === 'RENT_RECEIVED_NO_HP_INCOME')).toBe(true);
     expect(result.undeclaredIncomeTotal).toBe(91600); expect(result.risk.band).toBe('Critical');
+    expect(result.flags.find((item) => item.code === 'TDS_ON_OTHER_INCOME')?.evidence.aisValue).toBe(7740);
+    expect(new Set(result.flags.map((item) => item.id)).size).toBe(result.flags.length);
   });
   it('handles clean and threshold document data plus every document mismatch', () => {
     const clean = sample(); clean.ais.entries = [clean.ais.entries[0]]; clean.form16.totalTds = 88000; clean.form16.tdsQuarterly = [{ quarter: 'Q1', amount: 88000, depositedOn: '2025-07-07' }];
@@ -33,6 +35,13 @@ describe('reconciliation detectors', () => {
     const value = sample(); const duplicates = duplicateFlags(value); expect(duplicates.duplicateEntryIds).toEqual(['A6']);
     const low = sample(); low.ais.entries = [{ id: 'S', category: 'SAVINGS_INTEREST', source: 'Bank', amount: 9000, tdsCredited: 0 }]; const income = incomeFlags(low, []); expect(income.flags.map((item) => item.code)).toContain('SAVINGS_INTEREST_BELOW_80TTA_CAP');
     const tds = sample(); tds.form16.totalTds = 1; tds.form16.tdsQuarterly[0].depositedOn = '2025-07-08'; expect(tdsIntegrityFlags(tds).map((item) => item.code)).toEqual(expect.arrayContaining(['QUARTERLY_TDS_SUM_MISMATCH', 'TDS_DEPOSITED_LATE']));
+  });
+  it('compares category totals and gives each late quarter its own id', () => {
+    const value = sample(); value.declared.otherIncome.depositInterest = 50000;
+    value.ais.entries = [value.ais.entries[0], { id: 'F1', category: 'FD_INTEREST', source: 'Bank A', amount: 40000, tdsCredited: 0 }, { id: 'F2', category: 'FD_INTEREST', source: 'Bank B', amount: 40000, tdsCredited: 0 }];
+    const income = incomeFlags(value, []); expect(income.undeclaredIncomeTotal).toBe(30000);
+    const late = sample(); late.form16.tdsQuarterly = late.form16.tdsQuarterly.map((item) => ({ ...item, depositedOn: '2026-05-30' }));
+    const ids = tdsIntegrityFlags(late).map((item) => item.id); expect(new Set(ids).size).toBe(4);
   });
   it('makes risk score transparent in every band', () => {
     expect(riskScore([], 0, 1).band).toBe('Clean'); expect(riskScore([{ severity: 'WARNING' } as never], 0, 1).band).toBe('Low'); expect(riskScore([{ severity: 'BLOCKER' } as never, { severity: 'BLOCKER' } as never], 0, 1).band).toBe('High');

@@ -18,8 +18,12 @@ export function deductionLines(input: TaxInput, regime: Regime, grossTotalIncome
   const hra = hraExemption(input).exemption;
   const ggLimit = Math.min(rules.caps['80GGMonthly'] * 12, grossTotalIncome * rules.caps['80GGIncomeRatio'], Math.max(0, input.salary.rentPaid - grossTotalIncome * rules.caps['80GGRentIncomeRatio']));
   const gg = input.salary.hraReceived > 0 ? 0 : capped(d.section80GG, ggLimit);
-  const donationLimit = grossTotalIncome * rules.caps['80GGIncomeRatio'];
-  const donation = d.donations.reduce((sum, item) => sum + Math.min(item.amount, item.hasQualifyingLimit ? donationLimit : item.amount) * item.percent / 100, 0);
+  // 80G: donations "subject to qualifying limit" count only up to 10% of gross total income in aggregate
+  // (the Act uses adjusted GTI; other Chapter VI-A deductions are not subtracted here), then the 50%/100% rate applies.
+  const donationLimit = grossTotalIncome * rules.caps['80GQualifyingRatio'];
+  const limitedTotal = d.donations.filter((item) => item.hasQualifyingLimit).reduce((sum, item) => sum + Math.max(0, item.amount), 0);
+  const limitedShare = limitedTotal > donationLimit ? donationLimit / limitedTotal : 1;
+  const donation = Math.round(d.donations.reduce((sum, item) => sum + Math.max(0, item.amount) * (item.hasQualifyingLimit ? limitedShare : 1) * item.percent / 100, 0));
   const oldOnly = regime === 'old';
   const newOnly = regime === 'new';
   const lines: DeductionLine[] = [
@@ -32,13 +36,15 @@ export function deductionLines(input: TaxInput, regime: Regime, grossTotalIncome
     { key: '80TTA', label: '80TTA savings interest', entered: input.otherIncome.savingsInterest, allowed: oldOnly ? tta : 0, oldAllowed: true, newAllowed: false, note: age >= 60 ? '80TTB applies instead for senior citizens.' : undefined },
     { key: '80TTB', label: '80TTB deposit interest', entered: input.otherIncome.savingsInterest + input.otherIncome.depositInterest, allowed: oldOnly ? ttb : 0, oldAllowed: true, newAllowed: false, note: age < 60 ? 'Available only to senior citizens.' : undefined },
     { key: '80E', label: '80E education-loan interest', entered: d.section80E, allowed: oldOnly ? Math.max(0, d.section80E) : 0, oldAllowed: true, newAllowed: false },
-    { key: '80G', label: '80G donations', entered: d.donations.reduce((sum, item) => sum + item.amount, 0), allowed: oldOnly ? donation : 0, oldAllowed: true, newAllowed: false },
-    { key: '80DD', label: '80DD disability', entered: d.section80DD, allowed: oldOnly ? capped(d.section80DD, rules.caps.disability) : 0, oldAllowed: true, newAllowed: false },
+    { key: '80G', label: '80G donations', entered: d.donations.reduce((sum, item) => sum + item.amount, 0), allowed: oldOnly ? donation : 0, oldAllowed: true, newAllowed: false, note: limitedShare < 1 ? `Donations subject to the qualifying limit are capped at 10% of gross total income (₹${Math.round(donationLimit)}).` : undefined },
+    // 80DD and 80U are flat amounts: ₹75,000, or ₹1,25,000 for severe (80%+) disability.
+    { key: '80DD', label: '80DD disability', entered: d.section80DD, allowed: oldOnly ? capped(d.section80DD, rules.caps.severeDisability) : 0, oldAllowed: true, newAllowed: false },
     { key: '80DDB', label: '80DDB specified illness', entered: d.section80DDB, allowed: oldOnly ? capped(d.section80DDB, age >= 60 ? rules.caps.specifiedIllnessSenior : rules.caps.specifiedIllness) : 0, oldAllowed: true, newAllowed: false },
-    { key: '80U', label: '80U disability', entered: d.section80U, allowed: oldOnly ? capped(d.section80U, rules.caps.disability) : 0, oldAllowed: true, newAllowed: false },
+    { key: '80U', label: '80U disability', entered: d.section80U, allowed: oldOnly ? capped(d.section80U, rules.caps.severeDisability) : 0, oldAllowed: true, newAllowed: false },
     { key: '80GG', label: '80GG rent paid', entered: d.section80GG, allowed: oldOnly ? gg : 0, oldAllowed: true, newAllowed: false, note: input.salary.hraReceived > 0 ? 'Not available when HRA is received.' : undefined },
     { key: 'professionalTax', label: 'Professional tax', entered: d.professionalTax, allowed: oldOnly ? capped(d.professionalTax, rules.caps.professionalTax) : 0, oldAllowed: true, newAllowed: false },
-    { key: '80CCH', label: '80CCH Agniveer contribution', entered: d.section80CCH, allowed: newOnly ? Math.max(0, d.section80CCH) : 0, oldAllowed: false, newAllowed: true },
+    // 80CCH is deductible in both regimes (section 115BAC(2) keeps it for the new regime).
+    { key: '80CCH', label: '80CCH Agniveer contribution', entered: d.section80CCH, allowed: Math.max(0, d.section80CCH), oldAllowed: true, newAllowed: true },
     // Section 57(iia): one-third of family pension, capped at ₹15,000 (old) or ₹25,000 (new).
     { key: 'familyPension', label: 'Family pension deduction', entered: input.otherIncome.familyPension, allowed: Math.round(Math.min(newOnly ? rules.caps.familyPension : rules.caps.familyPensionOld, Math.max(0, input.otherIncome.familyPension) * rules.rates.familyPensionRatio)), oldAllowed: true, newAllowed: true }
   ];

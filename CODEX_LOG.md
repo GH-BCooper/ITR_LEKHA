@@ -31,3 +31,10 @@
 **Self-review findings:** The screenshot is captured from the actual local app, not a mock; the development server was stopped after capture.
 **Deferred:** None.
 **Open questions:** None beyond documented discrepancies.
+
+## Milestone 5 — End-to-end review, fixes and redesign
+**Planned:** Test the whole app, fix defects, complete missing inputs and make the product usable.
+**Built:** Tax fixes (new-regime house-property loss, 10% old-regime 80CCD(2), 87A eligibility on total income, unused basic exemption against gains, 15% surcharge cap and gains-aware surcharge relief, family pension, 80G qualifying limit, 80DD/80U severe amounts, 80CCH in both regimes); break-even now shares the ledger's tax path; reconciliation compares category totals, accepts declared income, validates wrong-panel uploads, gives unique flag ids and surfaces claimable non-salary TDS; sanitised shared links; full deduction inputs; optional OpenAI narration that discards any reply containing an unseen number; simple light/dark redesign.
+**Verified:** `npm run typecheck`, `npm run lint`, `npm test`, `npm run build` and `npm run test:e2e` pass.
+**Deferred:** Live check of AI narration with a real `OPENAI_API_KEY`.
+**Open questions:** See DISCREPANCIES.md for 87A relief with special-rate income and the 80G limit base.

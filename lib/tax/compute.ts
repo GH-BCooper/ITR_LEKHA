@@ -41,7 +41,14 @@ function taxOnIncome(input: TaxInput, regime: Regime, taxableIncome: number) {
   const rebateValue = rebate(slab, totalIncome, input.residency, regime);
   const marginal = rebateMarginalRelief(slab - rebateValue, totalIncome, regime);
   const taxBeforeSurcharge = marginal.tax + gains.tax;
-  const surcharge = surchargeWithRelief(taxBeforeSurcharge, totalIncome, regime, age, gains.tax);
+  // For surcharge marginal relief, income at the threshold keeps the same gains and trims slab income first.
+  const taxAtThreshold = (threshold: number) => {
+    const trimSlab = Math.min(taxableIncome, totalIncome - threshold);
+    const trimGains = totalIncome - threshold - trimSlab;
+    const gainsAtThreshold = trimGains > 0 ? capitalGainsTax({ ...input, capitalGains: { stcg111A: Math.max(0, input.capitalGains.stcg111A - trimGains), ltcg112A: Math.max(0, input.capitalGains.ltcg112A - Math.max(0, trimGains - input.capitalGains.stcg111A)) } }, 0).tax : gains.tax;
+    return { slab: slabTax(taxableIncome - trimSlab, regime, age), special: gainsAtThreshold };
+  };
+  const surcharge = surchargeWithRelief(taxBeforeSurcharge, totalIncome, regime, age, gains.tax, taxAtThreshold);
   const postSurcharge = taxBeforeSurcharge + surcharge.surcharge - surcharge.relief;
   const cess = postSurcharge * rules.rates.cess;
   return { slab, gains, totalIncome, rebateValue, marginal, surcharge, cess, totalTax: round10(Math.max(0, postSurcharge + cess)) };

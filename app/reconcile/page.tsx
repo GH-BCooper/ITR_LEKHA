@@ -18,6 +18,7 @@ import { aisSchema, form16Schema } from '@/lib/validation/schemas';
 type Kind = 'form' | 'ais';
 type Declared = { savingsInterest: number; depositInterest: number; dividends: number; stcg111A: number; ltcg112A: number; rentDeclared: boolean };
 const noDeclared: Declared = { savingsInterest: 0, depositInterest: 0, dividends: 0, stcg111A: 0, ltcg112A: 0, rentDeclared: false };
+const fieldNames: Record<string, string> = { pan: 'your PAN', 'employer.name': 'the employer name', 'employer.tan': 'the employer TAN' };
 const severityLabels = { BLOCKER: 'Blockers', WARNING: 'Warnings', INFO: 'Good to know' } as const;
 
 function download(name: string, data: unknown) { const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })); const link = document.createElement('a'); link.href = url; link.download = name; link.click(); URL.revokeObjectURL(url); }
@@ -67,7 +68,9 @@ export default function ReconcilePage() {
     const type = typeof data === 'object' && data !== null && 'documentType' in data ? data.documentType : undefined;
     const target: Kind = type === 'AIS' ? 'ais' : type === 'FORM16' ? 'form' : kind;
     const checked = target === 'form' ? form16Schema.safeParse(data) : aisSchema.safeParse(data);
-    if (!checked.success) { say(`${target === 'form' ? 'Form 16' : 'AIS'} was not loaded: ${checked.error.issues.slice(0, 3).map((issue) => `${issue.path.join('.') || 'document'} — ${issue.message}`).join('; ')}`, 'error'); return; }
+    if (!checked.success) { const empty = checked.error.issues.filter((issue) => issue.code === 'too_small' && issue.origin === 'string').map((issue) => fieldNames[issue.path.join('.')] ?? issue.path.join('.'));
+      const other = checked.error.issues.filter((issue) => !(issue.code === 'too_small' && issue.origin === 'string')).slice(0, 3).map((issue) => `${issue.path.join('.') || 'document'} — ${issue.message}`);
+      say(`${target === 'form' ? 'Form 16' : 'AIS'} was not loaded. ${empty.length ? `Fill in ${empty.join(', ')} first — a blank template has these empty. ` : ''}${other.join('; ')}`.trim(), 'error'); return; }
     if (target === 'form') setForm(checked.data as Form16); else setAis(checked.data as Ais);
     const moved = target !== kind ? ` It was a${target === 'ais' ? 'n AIS' : ' Form 16'} file, so it went into the ${target === 'ais' ? 'AIS' : 'Form 16'} panel.` : '';
     say(`${target === 'form' ? 'Form 16' : 'AIS'} ${via}.${moved}`);

@@ -38,6 +38,18 @@ describe('tax engine regressions', () => {
   it('caps surcharge on capital-gains tax at 15%', () => {
     expect(surchargeWithRelief(1000000, 30000000, 'new', 30, 1000000).surcharge).toBe(150000);
   });
+  it('keeps surcharge marginal relief continuous when capital gains push income over ₹50L', () => {
+    const at = computeTax(withSalary(4000000, { capitalGains: { stcg111A: 1075000, ltcg112A: 0 } }), 'new').totalTax;
+    const over = computeTax(withSalary(4001000, { capitalGains: { stcg111A: 1075000, ltcg112A: 0 } }), 'new').totalTax;
+    expect(over - at).toBeLessThanOrEqual(1100);
+  });
+  it('limits qualifying 80G donations to 10% of gross total income and applies flat disability amounts', () => {
+    const value = withSalary(1050000, { deductions: { ...emptyInput.deductions, donations: [{ amount: 200000, percent: 50, hasQualifyingLimit: true }, { amount: 10000, percent: 100, hasQualifyingLimit: false }], section80U: 125000 } });
+    const lines = computeTax(value, 'old').deductions;
+    expect(lines.find((line) => line.key === '80G')?.allowed).toBe(60000);
+    expect(lines.find((line) => line.key === '80U')?.allowed).toBe(125000);
+    expect(computeTax({ ...value, deductions: { ...value.deductions, section80CCH: 5000 } }, 'old').deductions.find((line) => line.key === '80CCH')?.allowed).toBe(5000);
+  });
   it('turns a malformed shared link into a safe input', () => {
     const value = normalizeInput({ salary: { gross: '1200000', basic: -5 }, houseProperty: { kind: 'hack' }, age: 'x' });
     expect(value.salary.gross).toBe(1200000); expect(value.salary.basic).toBe(0); expect(value.houseProperty.kind).toBe('none'); expect(value.age).toBe(30);

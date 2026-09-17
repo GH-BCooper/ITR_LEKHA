@@ -1,5 +1,7 @@
 # Lekha build plan
 
+> **Status:** all milestones below are complete. Later review fixes, the redesign and the optional AI narration are recorded in `CODEX_LOG.md` (Milestone 5). The file lists below describe the original plan; the app also has `components/ledger/Verdict.tsx`, `components/MoneyField.tsx`, `components/NavLinks.tsx`, `lib/tax/normalize.ts` and `lib/explain/llm.ts`, and Tailwind was not used (plain CSS in `app/globals.css`).
+
 This plan follows `LEKHA_SPEC.md` as the authoritative source. Milestone gates are
 run after every milestone: `npm run typecheck`, `npm run lint`, and `npm test`.
 

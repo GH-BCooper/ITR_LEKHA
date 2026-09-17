@@ -45,6 +45,7 @@ function CompareContent() {
   const deduction = (key: keyof TaxInput['deductions'], value: number | boolean) => update((current) => ({ ...current, deductions: { ...current.deductions, [key]: value } }));
   const other = (key: keyof TaxInput['otherIncome'], value: number) => update((current) => ({ ...current, otherIncome: { ...current.otherIncome, [key]: value } }));
   const gains = (key: keyof TaxInput['capitalGains'], value: number) => update((current) => ({ ...current, capitalGains: { ...current.capitalGains, [key]: value } }));
+  const donationAt = (index: number, patch: Partial<TaxInput['deductions']['donations'][number]>) => update((current) => ({ ...current, deductions: { ...current.deductions, donations: current.deductions.donations.map((item, position) => position === index ? { ...item, ...patch } : item) } }));
   const letOut = (patch: Partial<{ rentReceived: number; municipalTaxes: number; interestPaid: number }>) => update((current) => {
     const base = current.houseProperty.kind === 'letOut' ? current.houseProperty : { kind: 'letOut' as const, rentReceived: 0, municipalTaxes: 0, interestPaid: 0 };
     return { ...current, houseProperty: { ...base, ...patch } };
@@ -113,6 +114,30 @@ function CompareContent() {
               <MoneyField label="80E — education-loan interest" value={input.deductions.section80E} onChange={(value) => deduction('section80E', value)} />
               <MoneyField label="Professional tax" value={input.deductions.professionalTax} onChange={(value) => deduction('professionalTax', value)} hint="Capped at ₹2,500." />
               {input.salary.hraReceived === 0 && <MoneyField label="80GG — rent paid without HRA" value={input.deductions.section80GG} onChange={(value) => deduction('section80GG', value)} hint="Up to ₹60,000 a year." />}
+            </div></fieldset>
+            <fieldset className="group"><legend>Donations <span className="hint">(80G, old regime)</span></legend>
+              <div className="stack">
+                {input.deductions.donations.map((donation, index) => <div className="form-grid" key={index}>
+                  <MoneyField label={`Donation ${index + 1}`} value={donation.amount} onChange={(amount) => donationAt(index, { amount })} />
+                  <label>Deduction type<select value={`${donation.percent}-${donation.hasQualifyingLimit ? 'limit' : 'nolimit'}`} onChange={(event) => { const [percent, limit] = event.target.value.split('-'); donationAt(index, { percent: percent === '50' ? 50 : 100, hasQualifyingLimit: limit === 'limit' }); }}>
+                    <option value="100-nolimit">100%, no limit (e.g. PM CARES, PMNRF)</option>
+                    <option value="50-nolimit">50%, no limit (e.g. PM Drought Relief)</option>
+                    <option value="100-limit">100%, within 10% of income (e.g. family planning)</option>
+                    <option value="50-limit">50%, within 10% of income (most charities, temples)</option>
+                  </select></label>
+                  <div className="full"><button className="button ghost small" onClick={() => update((current) => ({ ...current, deductions: { ...current.deductions, donations: current.deductions.donations.filter((_, position) => position !== index) } }))}>Remove donation {index + 1}</button></div>
+                </div>)}
+                <div><button className="button secondary" onClick={() => update((current) => ({ ...current, deductions: { ...current.deductions, donations: [...current.deductions.donations, { amount: 0, percent: 50, hasQualifyingLimit: true }] } }))}>Add a donation</button></div>
+                <span className="hint">Cash donations above ₹2,000 do not qualify. Check the receipt for the 80G category.</span>
+              </div>
+            </fieldset>
+            <fieldset className="group"><legend>Health and disability <span className="hint">(old regime)</span></legend><div className="form-grid">
+              <label>80U — your own disability<select value={input.deductions.section80U} onChange={(event) => deduction('section80U', Number(event.target.value))}><option value={0}>None</option><option value={75000}>40% or more — ₹75,000</option><option value={125000}>Severe, 80% or more — ₹1,25,000</option></select></label>
+              <label>80DD — dependant with disability<select value={input.deductions.section80DD} onChange={(event) => deduction('section80DD', Number(event.target.value))}><option value={0}>None</option><option value={75000}>40% or more — ₹75,000</option><option value={125000}>Severe, 80% or more — ₹1,25,000</option></select></label>
+              <MoneyField label="80DDB — treatment of specified illness" value={input.deductions.section80DDB} onChange={(value) => deduction('section80DDB', value)} hint={`Capped at ${(input.age ?? 0) >= 60 ? '₹1,00,000' : '₹40,000'}.`} />
+            </div></fieldset>
+            <fieldset className="group"><legend>Agniveer <span className="hint">(both regimes)</span></legend><div className="form-grid">
+              <MoneyField className="full" label="80CCH — Agniveer Corpus Fund contribution" value={input.deductions.section80CCH} onChange={(value) => deduction('section80CCH', value)} hint="Only for Agnipath enrollees; allowed in both regimes." />
             </div></fieldset>
             <fieldset className="group"><legend>Home loan / property</legend><div className="form-grid">
               <label className="full">Property<select value={hp.kind} onChange={(event) => update((current) => ({ ...current, houseProperty: event.target.value === 'selfOccupied' ? { kind: 'selfOccupied', interestPaid: 0 } : event.target.value === 'letOut' ? { kind: 'letOut', rentReceived: 0, municipalTaxes: 0, interestPaid: 0 } : { kind: 'none' } }))}><option value="none">No house property</option><option value="selfOccupied">Self-occupied (I live in it)</option><option value="letOut">Let out (I rent it out)</option></select></label>
